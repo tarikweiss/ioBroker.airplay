@@ -1,0 +1,126 @@
+{
+    "common": {
+        "name": "airplay",
+        "version": "0.0.1",
+        "news": {
+            "0.0.1": {
+                "en": "initial release",
+                "de": "Erstveröffentlichung",
+                "ru": "Начальная версия",
+                "pt": "lançamento inicial",
+                "nl": "Eerste uitgave",
+                "fr": "Première version",
+                "it": "Versione iniziale",
+                "es": "Versión inicial",
+                "pl": "Pierwsze wydanie",
+                "uk": "Початкова версія",
+                "zh-cn": "首次出版"
+            }
+        },
+        "titleLang": {
+            "en": "AirPlay",
+            "de": "AirPlay",
+            "ru": "AirPlay",
+            "pt": "AirPlay",
+            "nl": "AirPlay",
+            "fr": "AirPlay",
+            "it": "AirPlay",
+            "es": "Salida en antena",
+            "pl": "AirPlay",
+            "uk": "AirPlay",
+            "zh-cn": "隔空播放"
+        },
+        "desc": {
+            "en": "Bring the possibility to play sound to AirPlay compatible devices to ioBroker.",
+            "de": "Bringen Sie die Möglichkeit, Ton auf AirPlay-kompatiblen Geräten abzuspielen, zu ioBroker.",
+            "ru": "Предоставьте ioBroker возможность воспроизводить звук на устройствах, совместимых с AirPlay.",
+            "pt": "Traga a possibilidade de reproduzir som em dispositivos compatíveis com AirPlay para o ioBroker.",
+            "nl": "Breng de mogelijkheid om geluid af te spelen op AirPlay-compatibele apparaten naar ioBroker.",
+            "fr": "Apportez à ioBroker la possibilité de lire du son sur des appareils compatibles AirPlay.",
+            "it": "Porta su ioBroker la possibilità di riprodurre l'audio sui dispositivi compatibili con AirPlay.",
+            "es": "Traiga a ioBroker la posibilidad de reproducir sonido en dispositivos compatibles con AirPlay.",
+            "pl": "Dodaj możliwość odtwarzania dźwięku na urządzeniach zgodnych z AirPlay w ioBroker.",
+            "uk": "Додайте в ioBroker можливість відтворення звуку на пристроях, сумісних з AirPlay.",
+            "zh-cn": "ioBroker 能够在 AirPlay 兼容设备上播放声音。"
+        },
+        "authors": ["Tarik Weiss <kontakt@tarikweiss.de>"],
+        "keywords": ["airplay airtunes apple bonjour avahi ciao"],
+        "licenseInformation": {
+            "type": "free",
+            "license": "MIT"
+        },
+        "platform": "Javascript/Node.js",
+        "icon": "airplay.png",
+        "enabled": true,
+        "extIcon": "https://raw.githubusercontent.com/tarikweiss/ioBroker.airplay/main/admin/airplay.png",
+        "readme": "https://github.com/tarikweiss/ioBroker.airplay/blob/main/README.md",
+        "loglevel": "info",
+        "tier": 3,
+        "mode": "daemon",
+        "type": "multimedia",
+        "compact": true,
+        "connectionType": "local",
+        "dataSource": "push",
+        "adminUI": {
+            "config": "json",
+            "tab": "materialize"
+        },
+        "adminTab": {
+            "singleton": true,
+            "name": {
+                "en": "AirPlay",
+                "de": "AirPlay",
+                "ru": "AirPlay",
+                "pt": "AirPlay",
+                "nl": "AirPlay",
+                "fr": "AirPlay",
+                "it": "AirPlay",
+                "es": "Salida en antena",
+                "pl": "AirPlay",
+                "uk": "AirPlay",
+                "zh-cn": "隔空播放"
+            },
+            "link": "",
+            "fa-icon": "info"
+        },
+        "eraseOnUpload": true,
+        "dependencies": [
+            {
+                "js-controller": ">=6.0.11"
+            }
+        ],
+        "globalDependencies": [
+            {
+                "admin": "7.0.23"
+            }
+        ]
+    },
+    "native": {
+        "option1": true,
+        "option2": "42"
+    },
+    "objects": [],
+    "instanceObjects": [
+        {
+            "_id": "info",
+            "type": "channel",
+            "common": {
+                "name": "Information"
+            },
+            "native": {}
+        },
+        {
+            "_id": "info.connection",
+            "type": "state",
+            "common": {
+                "role": "indicator.connected",
+                "name": "Device or service connected",
+                "type": "boolean",
+                "read": true,
+                "write": false,
+                "def": false
+            },
+            "native": {}
+        }
+    ]
+}

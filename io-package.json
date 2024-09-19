@@ -86,7 +86,7 @@
         "eraseOnUpload": true,
         "dependencies": [
             {
-                "js-controller": ">=6.0.0"
+                "js-controller": ">=6.0.10"
             }
         ],
         "globalDependencies": [

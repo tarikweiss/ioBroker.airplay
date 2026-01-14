@@ -256,18 +256,22 @@ export class ConnectionHandler {
         const txtRecord = (await this.#adapter.getStateAsync(devicePrefix + '.txt-record'))?.val;
 
         if (typeof ip !== 'string') {
+            this.#adapter.log.warn('Missing IP address for AirPlay device.');
             return;
         }
 
         if (typeof port !== 'number') {
+            this.#adapter.log.warn('Missing port for AirPlay device.');
             return;
         }
 
         if (typeof volume !== 'number') {
+            this.#adapter.log.warn('Volume is not a number for AirPlay device.');
             return;
         }
 
         if (typeof txtRecord !== 'string') {
+            this.#adapter.log.warn('TXT record is invalid for AirPlay device.');
             return;
         }
 
@@ -300,7 +304,9 @@ export class ConnectionHandler {
         }
 
         const deviceKey = `${ip}:${port}`;
-        this.#airPlay.stop(deviceKey, () => {});
+        this.#airPlay.stop(deviceKey, () => {
+            this.#adapter.log.debug(`Device with key ${deviceKey} was stopped.`);
+        });
     }
 
     async setVolume(deviceId: string, volume: number): Promise<void> {

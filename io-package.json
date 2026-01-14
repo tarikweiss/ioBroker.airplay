@@ -75,7 +75,7 @@
                 "nl": "AirPlay",
                 "fr": "AirPlay",
                 "it": "AirPlay",
-                "es": "Salida en antena",
+                "es": "AirPlay",
                 "pl": "AirPlay",
                 "uk": "AirPlay",
                 "zh-cn": "隔空播放"
@@ -83,7 +83,7 @@
             "link": "",
             "fa-icon": "info"
         },
-        "eraseOnUpload": true,
+        "supportCustoms": true,
         "dependencies": [
             {
                 "js-controller": ">=6.0.10"
@@ -96,8 +96,6 @@
         ]
     },
     "native": {
-        "option1": true,
-        "option2": "42"
     },
     "objects": [],
     "instanceObjects": [

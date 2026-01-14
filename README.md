@@ -10,12 +10,25 @@
 
 **Tests:** ![Test and Release](https://github.com/tarikweiss/ioBroker.airplay/workflows/Test%20and%20Release/badge.svg)
 
-## airplay adapter for ioBroker
+## Introduction
 
 Bring the possibility to play sound to AirPlay compatible devices to ioBroker.
 
-## Disclaimer
-AirPlay is a trademark of Apple Inc. The developers of this module are in no way endorsed or affiliated with Apple Inc., or any associated subsidiaries, logos or trademarks.
+## Prerequisites
+
+You need to have ``ffmpeg`` installed. Furthermore, a DNS-SD/mDNS implementation like `Avahi` must be available.
+
+If you run ioBroker in a docker container, you probably need to adjust your settings for the `host_mode` and enable the
+`AVAHI` environment variable. You can find further information [here (ioBroker docker Image)](https://hub.docker.com/r/iobroker/iobroker).
+
+## Usage
+
+This adapter creates the devices it discovers via mdns/dns-sd service. If you wan't to stream an audio file to a AirPlay
+device like a HomePod, then you need to enable the `on-air` datapoint per device (which you want to stream to).
+After that you need to set the `airplay.*.stream.file` to a valid file path. Currently this is tested with `mp3` file type,
+others may work too.
+
+If you want to adjust the volume, you can set the `volume` datapoint between 0 and 100.
 
 ## Changelog
 <!--

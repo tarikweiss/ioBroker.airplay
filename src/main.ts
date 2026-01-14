@@ -38,16 +38,6 @@ class Airplay extends utils.Adapter {
 
         await this.createStreamState();
         await this.#connectionHandler.startDiscovery();
-
-        // The adapters config (in the instance object everything under the attribute "native") is accessible via
-        // this.config:
-        this.log.info('config option1: ' + this.config.option1);
-        this.log.info('config option2: ' + this.config.option2);
-
-        // You can also add a subscription for multiple states. The following line watches all states starting with "lights."
-        // this.subscribeStates('lights.*');
-        // Or, if you really must, you can also watch all states. Don't do this if you don't need to. Otherwise this will cause a lot of unnecessary load on the system:
-        // this.subscribeStates('*');
     }
 
     /**
@@ -147,6 +137,13 @@ class Airplay extends utils.Adapter {
                     return;
                 }
                 this.#connectionHandler.setVolume(deviceId, state.val);
+                break;
+            }
+            case 'passcode': {
+                if (typeof state.val !== 'string') {
+                    return;
+                }
+                this.#connectionHandler.setPasscode(deviceId, state.val);
                 break;
             }
         }

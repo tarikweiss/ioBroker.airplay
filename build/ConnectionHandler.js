@@ -5,6 +5,9 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __typeError = (msg) => {
+  throw TypeError(msg);
+};
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
@@ -26,42 +29,29 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-var __accessCheck = (obj, member, msg) => {
-  if (!member.has(obj))
-    throw TypeError("Cannot " + msg);
-};
-var __privateGet = (obj, member, getter) => {
-  __accessCheck(obj, member, "read from private field");
-  return getter ? getter.call(obj) : member.get(obj);
-};
-var __privateAdd = (obj, member, value) => {
-  if (member.has(obj))
-    throw TypeError("Cannot add the same private member more than once");
-  member instanceof WeakSet ? member.add(obj) : member.set(obj, value);
-};
-var __privateSet = (obj, member, value, setter) => {
-  __accessCheck(obj, member, "write to private field");
-  setter ? setter.call(obj, value) : member.set(obj, value);
-  return value;
-};
+var __accessCheck = (obj, member, msg) => member.has(obj) || __typeError("Cannot " + msg);
+var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read from private field"), getter ? getter.call(obj) : member.get(obj));
+var __privateAdd = (obj, member, value) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value);
+var __privateSet = (obj, member, value, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value) : member.set(obj, value), value);
 var ConnectionHandler_exports = {};
 __export(ConnectionHandler_exports, {
   ConnectionHandler: () => ConnectionHandler
 });
 module.exports = __toCommonJS(ConnectionHandler_exports);
-var Bonjour = __toESM(require("mdns"));
+var import_dnssd = __toESM(require("dnssd"));
 var import_airtunes2 = __toESM(require("airtunes2"));
 var import_child_process = require("child_process");
-var _adapter, _airPlay, _browser, _ffmpeg;
+var _adapter, _airPlay, _browser, _ffmpeg, _deviceIdToKeyMapping;
 class ConnectionHandler {
   constructor(adapter) {
-    __privateAdd(this, _adapter, void 0);
-    __privateAdd(this, _airPlay, void 0);
-    __privateAdd(this, _browser, void 0);
+    __privateAdd(this, _adapter);
+    __privateAdd(this, _airPlay);
+    __privateAdd(this, _browser);
     __privateAdd(this, _ffmpeg, null);
+    __privateAdd(this, _deviceIdToKeyMapping, /* @__PURE__ */ new Map());
     __privateSet(this, _adapter, adapter);
     __privateSet(this, _airPlay, new import_airtunes2.default());
-    __privateSet(this, _browser, Bonjour.createBrowser(Bonjour.tcp("airplay")));
+    __privateSet(this, _browser, new import_dnssd.default.Browser(import_dnssd.default.tcp("airplay")));
   }
   async startDiscovery() {
     __privateGet(this, _browser).on("serviceUp", async (service) => {
@@ -70,7 +60,7 @@ class ConnectionHandler {
         this.setDeviceInformation(service);
         this.setDeviceAvailable(service, true);
       } catch (exception) {
-        __privateGet(this, _adapter).log.error("Cannot create device! " + service + " " + exception);
+        __privateGet(this, _adapter).log.error("Cannot create device! " + JSON.stringify(service) + " " + exception);
       }
     });
     __privateGet(this, _browser).on("serviceDown", async (service) => {
@@ -78,7 +68,7 @@ class ConnectionHandler {
         await this.createDevice(service);
         this.setDeviceInformation(service);
         this.setDeviceAvailable(service, false);
-        this.setDeviceOnAir(service.txtRecord.deviceid, false);
+        this.setDeviceOnAir(service.txt.deviceid, false);
       } catch (exception) {
         __privateGet(this, _adapter).log.error("Cannot create device! " + JSON.stringify(service) + " " + exception);
       }
@@ -87,10 +77,10 @@ class ConnectionHandler {
     __privateGet(this, _adapter).setState("info.connection", true, true);
   }
   async stopDiscovery() {
-    await __privateGet(this, _browser).stop();
     __privateGet(this, _airPlay).stopAll(() => {
     });
     __privateGet(this, _adapter).setState("devices.*.on-air", false, true);
+    __privateGet(this, _adapter).setState("devices.*.available", false, true);
   }
   async playFile(path) {
     var _a, _b;
@@ -107,25 +97,61 @@ class ConnectionHandler {
       }
       await __privateGet(this, _adapter).setState("stream.filePid", null);
     }
-    const ffmpeg = (0, import_child_process.spawn)(`ffmpeg`, [
-      "-i",
-      path,
-      "-acodec",
-      "pcm_s16le",
-      "-f",
-      "s16le",
-      "-ar",
-      "44100",
-      "-ac",
-      "2",
-      "pipe:1"
-    ]);
-    await __privateGet(this, _adapter).setState("stream.filePid", (_b = ffmpeg.pid) != null ? _b : null, true);
-    __privateSet(this, _ffmpeg, ffmpeg.stdout);
-    ffmpeg.stdout.pipe(__privateGet(this, _airPlay));
+    try {
+      const ffmpeg = (0, import_child_process.spawn)(`ffmpeg`, [
+        "-i",
+        path,
+        "-acodec",
+        "pcm_s16le",
+        "-f",
+        "s16le",
+        "-ar",
+        "44100",
+        "-ac",
+        "2",
+        "pipe:1"
+      ]);
+      await __privateGet(this, _adapter).setState("stream.filePid", (_b = ffmpeg.pid) != null ? _b : null, true);
+      __privateSet(this, _ffmpeg, ffmpeg.stdout);
+      ffmpeg.stdout.pipe(__privateGet(this, _airPlay));
+    } catch (exception) {
+      __privateGet(this, _adapter).log.error("You need to install ffmpeg to be able to play mp3 files.");
+    }
   }
   async createDevice(service) {
     const devicePrefix = this.getDevicePrefix(service);
+    await __privateGet(this, _adapter).extendObject(`${devicePrefix}`, {
+      type: "device",
+      common: {
+        name: service.name,
+        statusStates: {
+          onlineId: `${devicePrefix}.available`
+        }
+      }
+    });
+    await __privateGet(this, _adapter).extendObject(`${devicePrefix}.available`, {
+      type: "state",
+      common: {
+        name: {
+          de: "Verf\xFCgbar",
+          en: "Available"
+        },
+        type: "boolean",
+        role: "indicator.connected",
+        write: false
+      }
+    });
+    await __privateGet(this, _adapter).extendObject(`${devicePrefix}.raw-status`, {
+      type: "state",
+      common: {
+        name: {
+          de: "Status (roh)",
+          en: "Status (raw)"
+        },
+        type: "string",
+        write: false
+      }
+    });
     await __privateGet(this, _adapter).extendObject(`${devicePrefix}.name`, {
       type: "state",
       common: {
@@ -133,7 +159,8 @@ class ConnectionHandler {
           de: "Name",
           en: "Name"
         },
-        type: "string"
+        type: "string",
+        write: false
       }
     });
     await __privateGet(this, _adapter).extendObject(`${devicePrefix}.host`, {
@@ -143,7 +170,8 @@ class ConnectionHandler {
           de: "Host-Adresse",
           en: "Hostname"
         },
-        type: "string"
+        type: "string",
+        write: false
       }
     });
     await __privateGet(this, _adapter).extendObject(`${devicePrefix}.ip`, {
@@ -151,19 +179,21 @@ class ConnectionHandler {
       common: {
         name: {
           de: "IP-Adresse",
-          en: "IP-Adress"
+          en: "IP-Address"
         },
-        type: "string"
+        type: "string",
+        write: false
       }
     });
     await __privateGet(this, _adapter).extendObject(`${devicePrefix}.port`, {
       type: "state",
       common: {
         name: {
-          de: "IP-Adresse",
-          en: "IP-Address"
+          de: "Port",
+          en: "Port"
         },
-        type: "number"
+        type: "number",
+        write: false
       }
     });
     await __privateGet(this, _adapter).extendObject(`${devicePrefix}.volume`, {
@@ -179,18 +209,6 @@ class ConnectionHandler {
         type: "number"
       }
     });
-    await __privateGet(this, _adapter).extendObject(`${devicePrefix}.available`, {
-      type: "state",
-      common: {
-        name: {
-          de: "Verf\xFCgbar",
-          en: "Available"
-        },
-        type: "boolean",
-        role: "indicator.connected",
-        write: false
-      }
-    });
     await __privateGet(this, _adapter).extendObject(`${devicePrefix}.on-air`, {
       type: "state",
       common: {
@@ -203,18 +221,30 @@ class ConnectionHandler {
         defAck: true
       }
     });
-    await __privateGet(this, _adapter).extendObject(`${devicePrefix}.txtRecord`, {
+    await __privateGet(this, _adapter).extendObject(`${devicePrefix}.txt-record`, {
       type: "state",
       common: {
         name: {
           de: "Txt-Eintrag",
           en: "Txt-Record"
         },
+        type: "string",
+        write: false
+      }
+    });
+    await __privateGet(this, _adapter).extendObject(`${devicePrefix}.passcode`, {
+      type: "state",
+      common: {
+        name: {
+          de: "Passcode",
+          en: "Passcode"
+        },
         type: "string"
       }
     });
     await __privateGet(this, _adapter).subscribeStatesAsync("devices.*.on-air");
     await __privateGet(this, _adapter).subscribeStatesAsync("devices.*.volume");
+    await __privateGet(this, _adapter).subscribeStatesAsync("devices.*.passcode");
   }
   async setDeviceOnAir(deviceId, state) {
     var _a, _b, _c, _d;
@@ -222,7 +252,7 @@ class ConnectionHandler {
     const ip = (_a = await __privateGet(this, _adapter).getStateAsync(devicePrefix + ".ip")) == null ? void 0 : _a.val;
     const port = (_b = await __privateGet(this, _adapter).getStateAsync(devicePrefix + ".port")) == null ? void 0 : _b.val;
     const volume = (_c = await __privateGet(this, _adapter).getStateAsync(devicePrefix + ".volume")) == null ? void 0 : _c.val;
-    const txtRecord = (_d = await __privateGet(this, _adapter).getStateAsync(devicePrefix + ".txtRecord")) == null ? void 0 : _d.val;
+    const txtRecord = (_d = await __privateGet(this, _adapter).getStateAsync(devicePrefix + ".txt-record")) == null ? void 0 : _d.val;
     if (typeof ip !== "string") {
       return;
     }
@@ -243,16 +273,17 @@ class ConnectionHandler {
         txt: JSON.parse(txtRecord)
       };
       const device = __privateGet(this, _airPlay).add(ip, deviceOptions);
+      __privateGet(this, _deviceIdToKeyMapping).set(deviceId, device.key);
       device.on("status", (status) => {
-        console.log(`Devices status (${ip}): ${status}`);
+        __privateGet(this, _adapter).setState(`${devicePrefix}.raw-status`, status, true);
         switch (status) {
           case "stopped": {
-            __privateGet(this, _adapter).setState(devicePrefix + ".on-air", false, true);
+            __privateGet(this, _adapter).setState(`${devicePrefix}.on-air`, false, true);
             break;
           }
         }
       });
-      await __privateGet(this, _adapter).setState(devicePrefix + ".on-air", true, true);
+      await __privateGet(this, _adapter).setState(`${devicePrefix}.on-air`, true, true);
       return;
     }
     const deviceKey = `${ip}:${port}`;
@@ -269,16 +300,25 @@ class ConnectionHandler {
     __privateGet(this, _airPlay).setVolume(deviceKey, volume.toString(), () => {
     });
   }
+  async setPasscode(deviceId, passcode) {
+    const devicePrefix = this.getDevicePrefixById(deviceId);
+    let deviceKey = __privateGet(this, _deviceIdToKeyMapping).get(deviceId);
+    if (deviceKey === void 0) {
+      return;
+    }
+    __privateGet(this, _adapter).setState(devicePrefix + ".passcode", passcode, true);
+    __privateGet(this, _airPlay).setPasscode(deviceKey, passcode);
+  }
   setDeviceInformation(service) {
     var _a;
     const txtRecordArray = [];
-    for (const [key, value] of Object.entries(service.txtRecord)) {
+    for (const [key, value] of Object.entries(service.txt)) {
       txtRecordArray.push(`${key}=${value}`);
     }
     __privateGet(this, _adapter).setState(this.getDevicePrefix(service) + ".name", (_a = service.name) != null ? _a : "Unknown", true);
     __privateGet(this, _adapter).setState(this.getDevicePrefix(service) + ".host", service.host, true);
     __privateGet(this, _adapter).setState(this.getDevicePrefix(service) + ".port", service.port, true);
-    __privateGet(this, _adapter).setState(this.getDevicePrefix(service) + ".txtRecord", JSON.stringify(txtRecordArray), true);
+    __privateGet(this, _adapter).setState(this.getDevicePrefix(service) + ".txt-record", JSON.stringify(txtRecordArray), true);
     __privateGet(this, _adapter).setState(this.getDevicePrefix(service) + ".ip", null, true);
     service.addresses.forEach((address) => {
       if (address.match(/[0-1]?[0-9]{1,2}\.[0-1]?[0-9]{1,2}\.[0-1]?[0-9]{1,2}\.[0-1]?[0-9]{1,2}/)) {
@@ -294,16 +334,17 @@ class ConnectionHandler {
   }
   getDevicePrefix(service) {
     var _a, _b;
-    if (!((_a = service.txtRecord) == null ? void 0 : _a.hasOwnProperty("deviceid"))) {
+    if (!((_a = service.txt) == null ? void 0 : _a.hasOwnProperty("deviceid"))) {
       throw new Error("Cannot create device, because it has no device id!");
     }
-    return `devices.${(_b = service.txtRecord) == null ? void 0 : _b.deviceid}`;
+    return `devices.${(_b = service.txt) == null ? void 0 : _b.deviceid}`;
   }
 }
 _adapter = new WeakMap();
 _airPlay = new WeakMap();
 _browser = new WeakMap();
 _ffmpeg = new WeakMap();
+_deviceIdToKeyMapping = new WeakMap();
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   ConnectionHandler

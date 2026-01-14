@@ -1,4 +1,6 @@
-import * as Bonjour from 'mdns';
+import dnssd from 'dnssd';
+import Bonjour from 'dnssd';
+
 import { AdapterInstance } from '@iobroker/adapter-core';
 
 import airtunes2 from 'airtunes2';
@@ -9,13 +11,16 @@ import AirPlayDevice = AirTunes.AirPlayDevice;
 export class ConnectionHandler {
     #adapter: AdapterInstance;
     #airPlay: airtunes2;
-    #browser: Bonjour.Browser;
+    #browser: dnssd.Browser;
     #ffmpeg: internal.Readable | null = null;
+
+    #deviceIdToKeyMapping: Map<string, string> = new Map<string, string>();
 
     constructor(adapter: AdapterInstance) {
         this.#adapter = adapter;
         this.#airPlay = new airtunes2();
-        this.#browser = Bonjour.createBrowser(Bonjour.tcp('airplay'));
+        // this.#browser = Bonjour.createBrowser(Bonjour.tcp('airplay'));
+        this.#browser = new dnssd.Browser(dnssd.tcp('airplay'));
     }
 
     async startDiscovery(): Promise<void> {
@@ -25,7 +30,7 @@ export class ConnectionHandler {
                 this.setDeviceInformation(service);
                 this.setDeviceAvailable(service, true);
             } catch (exception) {
-                this.#adapter.log.error('Cannot create device! ' + service + ' ' + exception);
+                this.#adapter.log.error('Cannot create device! ' + JSON.stringify(service) + ' ' + exception);
             }
         });
 
@@ -34,7 +39,7 @@ export class ConnectionHandler {
                 await this.createDevice(service);
                 this.setDeviceInformation(service);
                 this.setDeviceAvailable(service, false);
-                this.setDeviceOnAir(service.txtRecord.deviceid, false);
+                this.setDeviceOnAir(service.txt.deviceid, false);
             } catch (exception) {
                 this.#adapter.log.error('Cannot create device! ' + JSON.stringify(service) + ' ' + exception);
             }
@@ -45,10 +50,11 @@ export class ConnectionHandler {
     }
 
     async stopDiscovery(): Promise<void> {
-        await this.#browser.stop();
+        // this.#scanner.stop();
         this.#airPlay.stopAll(() => {});
 
         this.#adapter.setState('devices.*.on-air', false, true);
+        this.#adapter.setState('devices.*.available', false, true);
     }
 
     async playFile(path: string): Promise<void> {
@@ -103,6 +109,41 @@ export class ConnectionHandler {
     async createDevice(service: Bonjour.Service): Promise<void> {
         const devicePrefix = this.getDevicePrefix(service);
 
+        await this.#adapter.extendObject(`${devicePrefix}`, {
+            type: 'device',
+            common: {
+                name: service.name,
+                statusStates: {
+                    onlineId: `${devicePrefix}.available`,
+                },
+            },
+        });
+
+        await this.#adapter.extendObject(`${devicePrefix}.available`, {
+            type: 'state',
+            common: {
+                name: {
+                    de: 'Verfügbar',
+                    en: 'Available',
+                },
+                type: 'boolean',
+                role: 'indicator.connected',
+                write: false,
+            },
+        });
+
+        await this.#adapter.extendObject(`${devicePrefix}.raw-status`, {
+            type: 'state',
+            common: {
+                name: {
+                    de: 'Status (roh)',
+                    en: 'Status (raw)',
+                },
+                type: 'string',
+                write: false,
+            },
+        });
+
         await this.#adapter.extendObject(`${devicePrefix}.name`, {
             type: 'state',
             common: {
@@ -111,6 +152,7 @@ export class ConnectionHandler {
                     en: 'Name',
                 },
                 type: 'string',
+                write: false,
             },
         });
 
@@ -122,6 +164,7 @@ export class ConnectionHandler {
                     en: 'Hostname',
                 },
                 type: 'string',
+                write: false,
             },
         });
 
@@ -130,9 +173,10 @@ export class ConnectionHandler {
             common: {
                 name: {
                     de: 'IP-Adresse',
-                    en: 'IP-Adress',
+                    en: 'IP-Address',
                 },
                 type: 'string',
+                write: false,
             },
         });
 
@@ -140,10 +184,11 @@ export class ConnectionHandler {
             type: 'state',
             common: {
                 name: {
-                    de: 'IP-Adresse',
-                    en: 'IP-Address',
+                    de: 'Port',
+                    en: 'Port',
                 },
                 type: 'number',
+                write: false,
             },
         });
 
@@ -161,19 +206,6 @@ export class ConnectionHandler {
             },
         });
 
-        await this.#adapter.extendObject(`${devicePrefix}.available`, {
-            type: 'state',
-            common: {
-                name: {
-                    de: 'Verfügbar',
-                    en: 'Available',
-                },
-                type: 'boolean',
-                role: 'indicator.connected',
-                write: false,
-            },
-        });
-
         await this.#adapter.extendObject(`${devicePrefix}.on-air`, {
             type: 'state',
             common: {
@@ -187,7 +219,7 @@ export class ConnectionHandler {
             },
         });
 
-        await this.#adapter.extendObject(`${devicePrefix}.txtRecord`, {
+        await this.#adapter.extendObject(`${devicePrefix}.txt-record`, {
             type: 'state',
             common: {
                 name: {
@@ -195,11 +227,24 @@ export class ConnectionHandler {
                     en: 'Txt-Record',
                 },
                 type: 'string',
+                write: false,
+            },
+        });
+
+        await this.#adapter.extendObject(`${devicePrefix}.passcode`, {
+            type: 'state',
+            common: {
+                name: {
+                    de: 'Passcode',
+                    en: 'Passcode',
+                },
+                type: 'string',
             },
         });
 
         await this.#adapter.subscribeStatesAsync('devices.*.on-air');
         await this.#adapter.subscribeStatesAsync('devices.*.volume');
+        await this.#adapter.subscribeStatesAsync('devices.*.passcode');
     }
 
     async setDeviceOnAir(deviceId: string, state: boolean): Promise<void> {
@@ -208,7 +253,7 @@ export class ConnectionHandler {
         const ip = (await this.#adapter.getStateAsync(devicePrefix + '.ip'))?.val;
         const port = (await this.#adapter.getStateAsync(devicePrefix + '.port'))?.val;
         const volume = (await this.#adapter.getStateAsync(devicePrefix + '.volume'))?.val;
-        const txtRecord = (await this.#adapter.getStateAsync(devicePrefix + '.txtRecord'))?.val;
+        const txtRecord = (await this.#adapter.getStateAsync(devicePrefix + '.txt-record'))?.val;
 
         if (typeof ip !== 'string') {
             return;
@@ -236,17 +281,20 @@ export class ConnectionHandler {
             };
 
             const device = this.#airPlay.add(ip, deviceOptions);
+
+            this.#deviceIdToKeyMapping.set(deviceId, device.key);
+
             device.on('status', (status) => {
-                console.log(`Devices status (${ip}): ${status}`);
+                this.#adapter.setState(`${devicePrefix}.raw-status`, status, true);
                 switch (status) {
                     case 'stopped': {
-                        this.#adapter.setState(devicePrefix + '.on-air', false, true);
+                        this.#adapter.setState(`${devicePrefix}.on-air`, false, true);
                         break;
                     }
                 }
             });
 
-            await this.#adapter.setState(devicePrefix + '.on-air', true, true);
+            await this.#adapter.setState(`${devicePrefix}.on-air`, true, true);
 
             return;
         }
@@ -268,17 +316,29 @@ export class ConnectionHandler {
         this.#airPlay.setVolume(deviceKey, volume.toString(), () => {});
     }
 
+    async setPasscode(deviceId: string, passcode: string): Promise<void> {
+        const devicePrefix = this.getDevicePrefixById(deviceId);
+
+        let deviceKey = this.#deviceIdToKeyMapping.get(deviceId);
+        if (deviceKey === undefined) {
+            return;
+        }
+
+        this.#adapter.setState(devicePrefix + '.passcode', passcode, true);
+        this.#airPlay.setPasscode(deviceKey, passcode);
+    }
+
     private setDeviceInformation(service: Bonjour.Service): void {
         const txtRecordArray = [];
 
-        for (const [key, value] of Object.entries(service.txtRecord)) {
+        for (const [key, value] of Object.entries(service.txt)) {
             txtRecordArray.push(`${key}=${value}`);
         }
 
         this.#adapter.setState(this.getDevicePrefix(service) + '.name', service.name ?? 'Unknown', true);
         this.#adapter.setState(this.getDevicePrefix(service) + '.host', service.host, true);
         this.#adapter.setState(this.getDevicePrefix(service) + '.port', service.port, true);
-        this.#adapter.setState(this.getDevicePrefix(service) + '.txtRecord', JSON.stringify(txtRecordArray), true);
+        this.#adapter.setState(this.getDevicePrefix(service) + '.txt-record', JSON.stringify(txtRecordArray), true);
 
         this.#adapter.setState(this.getDevicePrefix(service) + '.ip', null, true);
 
@@ -294,7 +354,7 @@ export class ConnectionHandler {
         this.#adapter.setState(this.getDevicePrefix(service) + '.available', available, true);
     }
 
-    private getDevicePrefixById(deviceId: string) {
+    private getDevicePrefixById(deviceId: string): string {
         return `devices.${deviceId}`;
     }
 
@@ -329,10 +389,10 @@ export class ConnectionHandler {
          * }
          */
 
-        if (!service.txtRecord?.hasOwnProperty('deviceid')) {
+        if (!service.txt?.hasOwnProperty('deviceid')) {
             throw new Error('Cannot create device, because it has no device id!');
         }
 
-        return `devices.${service.txtRecord?.deviceid}`;
+        return `devices.${service.txt?.deviceid}`;
     }
 }

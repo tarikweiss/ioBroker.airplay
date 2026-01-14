@@ -90,7 +90,12 @@
     "supportCustoms": true,
     "dependencies": [
       {
-        "js-controller": ">=6.0.10"
+        "js-controller": ">=6.0.11"
+      }
+    ],
+    "globalDependencies": [
+      {
+        "admin": ">=7.6.17"
       }
     ]
   },

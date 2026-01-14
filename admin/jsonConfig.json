@@ -4,7 +4,7 @@
     "items": {
         "noOptions": {
           "type": "staticText",
-          "label": "Currently there are no options available.",
+          "label": "Currently there are no options available."
         }
     }
 }

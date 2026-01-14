@@ -30,6 +30,9 @@ others may work too.
 
 If you want to adjust the volume, you can set the `volume` datapoint between 0 and 100.
 
+## Disclaimer
+AirPlay is a trademark of Apple Inc. The developers of this module are in no way endorsed or affiliated with Apple Inc., or any associated subsidiaries, logos or trademarks.
+
 ## Changelog
 <!--
     Placeholder for the next version (at the beginning of the line):

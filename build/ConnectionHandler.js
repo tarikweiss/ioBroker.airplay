@@ -254,15 +254,19 @@ class ConnectionHandler {
     const volume = (_c = await __privateGet(this, _adapter).getStateAsync(devicePrefix + ".volume")) == null ? void 0 : _c.val;
     const txtRecord = (_d = await __privateGet(this, _adapter).getStateAsync(devicePrefix + ".txt-record")) == null ? void 0 : _d.val;
     if (typeof ip !== "string") {
+      __privateGet(this, _adapter).log.warn("Missing IP address for AirPlay device.");
       return;
     }
     if (typeof port !== "number") {
+      __privateGet(this, _adapter).log.warn("Missing port for AirPlay device.");
       return;
     }
     if (typeof volume !== "number") {
+      __privateGet(this, _adapter).log.warn("Volume is not a number for AirPlay device.");
       return;
     }
     if (typeof txtRecord !== "string") {
+      __privateGet(this, _adapter).log.warn("TXT record is invalid for AirPlay device.");
       return;
     }
     if (state) {
@@ -288,6 +292,7 @@ class ConnectionHandler {
     }
     const deviceKey = `${ip}:${port}`;
     __privateGet(this, _airPlay).stop(deviceKey, () => {
+      __privateGet(this, _adapter).log.debug(`Device with key ${deviceKey} was stopped.`);
     });
   }
   async setVolume(deviceId, volume) {

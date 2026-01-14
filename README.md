@@ -38,14 +38,13 @@ AirPlay is a trademark of Apple Inc. The developers of this module are in no way
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
-
-### **WORK IN PROGRESS**
+### 0.0.1 (2026-01-14)
 * (tarikweiss) initial release
 
 ## License
 MIT License
 
-Copyright (c) 2024 Tarik Weiss <kontakt@tarikweiss.de>
+Copyright (c) 2026 Tarik Weiss <kontakt@tarikweiss.de>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
